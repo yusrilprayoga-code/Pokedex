@@ -1,101 +1,176 @@
-import Image from "next/image";
+"use client"
+
+import { PokemonCard } from "@/components/PokemonCard"
+import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import React from "react" // Added import for React
+
+interface Pokemon {
+  id: number
+  name: string
+  types: string[]
+  image: string
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [pokemonList, setPokemonList] = useState<Pokemon[]>([])
+  const [search, setSearch] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const pokemonPerPage = 20
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+  useEffect(() => {
+    const fetchPokemon = async () => {
+      const response = await fetch("https://pokeapi.co/api/v2/pokemon?limit=1000")
+      const data = await response.json()
+
+      const results = await Promise.all(
+        data.results.map(async (pokemon: any, index: number) => {
+          const res = await fetch(pokemon.url)
+          const details = await res.json()
+          return {
+            id: details.id,
+            name: details.name,
+            types: details.types.map((t: any) => t.type.name),
+            image: details.sprites.other["official-artwork"].front_default,
+          }
+        }),
+      )
+
+      setPokemonList(results)
+      setLoading(false)
+    }
+
+    fetchPokemon()
+  }, [])
+
+  const filteredPokemon = pokemonList.filter((pokemon) => pokemon.name.toLowerCase().includes(search.toLowerCase()))
+
+  const indexOfLastPokemon = currentPage * pokemonPerPage
+  const indexOfFirstPokemon = indexOfLastPokemon - pokemonPerPage
+  const currentPokemon = filteredPokemon.slice(indexOfFirstPokemon, indexOfLastPokemon)
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber)
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-800 to-pink-700">
+      <div className=" py-12 px-4 sm:px-6 lg:px-8">
+        <motion.h1
+          className="text-5xl font-extrabold text-center mb-10 text-white"
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          Pokédex
+        </motion.h1>
+
+        <motion.div
+          className="mb-8"
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          <Input
+            placeholder="Search Pokémon..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-md mx-auto bg-white/10 text-white placeholder-white/50 border-white/20"
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </motion.div>
+
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {[...Array(20)].map((_, i) => (
+              <Skeleton key={i} className="h-48 w-full rounded-xl bg-white/10" />
+            ))}
+          </div>
+        ) : (
+          <>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentPage}
+                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {currentPokemon.map((pokemon) => (
+                  <PokemonCard key={pokemon.id} {...pokemon} />
+                ))}
+              </motion.div>
+            </AnimatePresence>
+            <div className="mt-8 flex justify-center">
+              <Pagination
+                pokemonPerPage={pokemonPerPage}
+                totalPokemon={filteredPokemon.length}
+                paginate={paginate}
+                currentPage={currentPage}
+              />
+            </div>
+          </>
+        )}
+      </div>
     </div>
-  );
+  )
 }
+
+interface PaginationProps {
+  pokemonPerPage: number
+  totalPokemon: number
+  paginate: (pageNumber: number) => void
+  currentPage: number
+}
+
+function Pagination({ pokemonPerPage, totalPokemon, paginate, currentPage }: PaginationProps) {
+  const pageNumbers = []
+  const totalPages = Math.ceil(totalPokemon / pokemonPerPage)
+
+  for (let i = 1; i <= totalPages; i++) {
+    pageNumbers.push(i)
+  }
+
+  const visiblePageNumbers = pageNumbers.filter(
+    (number) => number === 1 || number === totalPages || (number >= currentPage - 2 && number <= currentPage + 2),
+  )
+
+  return (
+    <nav className="flex items-center space-x-2">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => paginate(Math.max(1, currentPage - 1))}
+        disabled={currentPage === 1}
+        className="bg-white/10 text-white hover:bg-white/20"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      {visiblePageNumbers.map((number, index, array) => (
+        <React.Fragment key={number}>
+          {index > 0 && array[index - 1] !== number - 1 && <span className="text-white">...</span>}
+          <Button
+            onClick={() => paginate(number)}
+            variant={currentPage === number ? "default" : "outline"}
+            className={currentPage === number ? "bg-white text-blue-900" : "bg-white/10 text-white hover:bg-white/20"}
+          >
+            {number}
+          </Button>
+        </React.Fragment>
+      ))}
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
+        disabled={currentPage === totalPages}
+        className="bg-white/10 text-white hover:bg-white/20"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </nav>
+  )
+}
+
