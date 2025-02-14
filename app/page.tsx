@@ -6,14 +6,23 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import React from "react" // Added import for React
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import React from "react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface Pokemon {
   id: number
   name: string
   types: string[]
   image: string
+  attack: number
+  weight: number
 }
 
 export default function Home() {
@@ -21,6 +30,8 @@ export default function Home() {
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
+  const [attackFilter, setAttackFilter] = useState("all")
+  const [weightFilter, setWeightFilter] = useState("all")
   const pokemonPerPage = 20
 
   useEffect(() => {
@@ -29,7 +40,7 @@ export default function Home() {
       const data = await response.json()
 
       const results = await Promise.all(
-        data.results.map(async (pokemon: any, index: number) => {
+        data.results.map(async (pokemon: any) => {
           const res = await fetch(pokemon.url)
           const details = await res.json()
           return {
@@ -37,8 +48,10 @@ export default function Home() {
             name: details.name,
             types: details.types.map((t: any) => t.type.name),
             image: details.sprites.other["official-artwork"].front_default,
+            attack: details.stats.find((stat: any) => stat.stat.name === "attack").base_stat,
+            weight: details.weight,
           }
-        }),
+        })
       )
 
       setPokemonList(results)
@@ -48,7 +61,20 @@ export default function Home() {
     fetchPokemon()
   }, [])
 
-  const filteredPokemon = pokemonList.filter((pokemon) => pokemon.name.toLowerCase().includes(search.toLowerCase()))
+  const filteredPokemon = pokemonList.filter((pokemon) => {
+    const nameMatch = pokemon.name.toLowerCase().includes(search.toLowerCase())
+    const attackMatch =
+      attackFilter === "all" ||
+      (attackFilter === "high" && pokemon.attack > 80) ||
+      (attackFilter === "low" && pokemon.attack <= 80)
+    const weightMatch =
+      weightFilter === "all" ||
+      (weightFilter === "light" && pokemon.weight < 100) ||
+      (weightFilter === "medium" && pokemon.weight >= 100 && pokemon.weight < 500) ||
+      (weightFilter === "heavy" && pokemon.weight >= 500)
+
+    return nameMatch && attackMatch && weightMatch
+  })
 
   const indexOfLastPokemon = currentPage * pokemonPerPage
   const indexOfFirstPokemon = indexOfLastPokemon - pokemonPerPage
@@ -58,7 +84,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-800 to-pink-700">
-      <div className=" py-12 px-4 sm:px-6 lg:px-8">
+      <div className="py-12 px-4 sm:px-6 lg:px-8">
         <motion.h1
           className="text-5xl font-extrabold text-center mb-10 text-white"
           initial={{ opacity: 0, y: -50 }}
@@ -69,7 +95,7 @@ export default function Home() {
         </motion.h1>
 
         <motion.div
-          className="mb-8"
+          className="mb-8 space-y-4"
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -80,6 +106,29 @@ export default function Home() {
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-md mx-auto bg-white/10 text-white placeholder-white/50 border-white/20"
           />
+          <div className="flex justify-center space-x-4">
+            <Select onValueChange={(value) => setAttackFilter(value)}>
+              <SelectTrigger className="w-[180px] bg-white/10 text-white border-white/20">
+                <SelectValue placeholder="Attack Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Attacks</SelectItem>
+                <SelectItem value="high">High Attack (&gt;80)</SelectItem>
+                <SelectItem value="low">Low Attack (≤80)</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select onValueChange={(value) => setWeightFilter(value)}>
+              <SelectTrigger className="w-[180px] bg-white/10 text-white border-white/20">
+                <SelectValue placeholder="Weight Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Weights</SelectItem>
+                <SelectItem value="light">Light (&lt;100)</SelectItem>
+                <SelectItem value="medium">Medium (100-499)</SelectItem>
+                <SelectItem value="heavy">Heavy (≥500)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </motion.div>
 
         {loading ? (
@@ -135,7 +184,7 @@ function Pagination({ pokemonPerPage, totalPokemon, paginate, currentPage }: Pag
   }
 
   const visiblePageNumbers = pageNumbers.filter(
-    (number) => number === 1 || number === totalPages || (number >= currentPage - 2 && number <= currentPage + 2),
+    (number) => number === 1 || number === totalPages || (number >= currentPage - 2 && number <= currentPage + 2)
   )
 
   return (
@@ -173,4 +222,3 @@ function Pagination({ pokemonPerPage, totalPokemon, paginate, currentPage }: Pag
     </nav>
   )
 }
-
